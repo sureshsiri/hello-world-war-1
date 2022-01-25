@@ -1,0 +1,68 @@
+pipeline {
+    parameters {
+  choice choices: ['main', 'dev', 'stg', 'prod'], description: 'Select any Branch', name: 'Branch'
+}
+   agent {
+  label 'Manthan_Slave'
+}
+
+   environment {
+  PATH = "/opt/maven/bin:$PATH"
+}
+
+    stages {
+        stage('Hello') {
+            steps {
+                echo 'Hello World'
+            }
+        }
+        stage('Checkout') {
+            steps {
+                checkout([$class: 'GitSCM', branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'manthan_github', url: 'https://github.com/manthanpatil1994/hello-world-war.git']]])
+            }
+        }
+        stage('Build') {
+            steps {
+                sh 'mvn package'
+            }
+        }
+        stage('Nexus Artifact Upload') {
+            steps {
+              script {
+                  def mavenpom = readMavenPom file: 'pom.xml'
+                     nexusArtifactUploader artifacts: 
+                 [
+                     [
+                         artifactId: 'hello-world-war', 
+                         classifier: '', 
+                         file: "target/hello-world-war-${mavenpom.version}.war", 
+                         type: 'war'
+                         ]
+                         ],
+                          credentialsId: 'manthan_nexus', 
+                          groupId: 'com.efsavage', 
+                          nexusUrl: '3.111.31.211:8081', 
+                          nexusVersion: 'nexus3', 
+                          protocol: 'http', 
+                          repository: 'manthan', 
+                          version: "${mavenpom.version}"
+              }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                deploy adapters:
+                 [
+                     tomcat8
+                     (
+                         credentialsId: 'shubham-tomcat-crid', 
+                 path: '', 
+                 url: 'http://15.207.248.145:9090/'
+                 )
+                 ],
+                  contextPath: 'manthan',
+                   war: '**/*.war'
+            }
+        }
+    }
+}
