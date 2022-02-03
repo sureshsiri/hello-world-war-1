@@ -1,0 +1,24 @@
+---
+- hosts: Appservers
+  become: true
+  vars:
+   - tomcat_url: https://dlcdn.apache.org/tomcat/tomcat-8/v8.5.75/bin/apache-tomcat-8.5.75.tar.gz
+   - tomcat_package: apache-tomcat-8.5.75
+  tasks:
+  - name: install java for tomcat
+    yum:
+     name: java
+     state : present
+  - name: download the tomcat from the official site
+    get_url:
+      url: "{{ tomcat_url }}"
+      dest: /opt
+  - name: untar the tomcat package
+    unarchive:
+      src: /opt/{{ tomcat_package }}.tar.gz
+      dest: /opt
+      remote_src: True
+  -  name: rename the tomcat directory
+     command: mv /opt/{{ tomcat_package }} /opt/tomcat/
+  - name: start the tomcat service
+    shell: nohup /opt/tomcat/bin/startup.sh
